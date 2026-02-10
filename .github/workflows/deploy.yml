@@ -3,59 +3,46 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # Allows manual triggering
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  workflow_dispatch:
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-        
-      - name: Debug - List all files
-        run: |
-          echo "=== Project Structure ==="
-          pwd
-          ls -la
-          echo ""
-          echo "=== Required files check ==="
-          [ -f "index.html" ] && echo "✅ index.html exists" || echo "❌ index.html missing"
-          [ -f ".nojekyll" ] && echo "✅ .nojekyll exists" || { echo "⚠️  Creating .nojekyll"; touch .nojekyll; }
-          [ -d "styles" ] && echo "✅ styles/ directory exists" || echo "❌ styles/ directory missing"
-          [ -d "js" ] && echo "✅ js/ directory exists" || echo "❌ js/ directory missing"
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
           
-          echo ""
-          echo "=== HTML structure check ==="
-          if [ -f "index.html" ]; then
-            grep -c "get-weather-btn" index.html && echo "✅ Button found in HTML" || echo "❌ Button not in HTML"
-            grep -c "weather-container" index.html && echo "✅ Weather container found" || echo "❌ Weather container not in HTML"
+      - name: Install dependencies (if any)
+        run: |
+          if [ -f "package.json" ]; then
+            npm ci
+          else
+            echo "No package.json found, skipping npm install"
           fi
           
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-        
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
+      - name: Verify files exist
+        run: |
+          echo "Verifying project structure..."
+          ls -la
+          echo ""
+          echo "Required files:"
+          [ -f "index.html" ] && echo "✅ index.html exists" || echo "❌ index.html missing"
+          [ -f ".nojekyll" ] && echo "✅ .nojekyll exists" || echo "❌ .nojekyll missing"
+          [ -d "styles" ] && echo "✅ styles directory exists" || echo "❌ styles directory missing"
+          [ -d "js" ] && echo "✅ js directory exists" || echo "❌ js directory missing"
           
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-        timeout-minutes: 5  # Set timeout to prevent hanging
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
+          publish_branch: gh-pages
+          force_orphan: true
+
