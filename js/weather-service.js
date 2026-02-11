@@ -147,7 +147,7 @@ const WeatherService = (() => {
         return [...baseTips, ...tempTips];
     };
     
-    // Main API call function
+        // Main API call function
     async function getWeather(cityName) {
         const city = cityName.toLowerCase();
         const cacheKey = `weather_${city}`;
@@ -174,27 +174,10 @@ const WeatherService = (() => {
             
             const data = await response.json();
             
-            // Mock additional data for demo purposes
+            // Add city name to data (API doesn't return it consistently)
             const enhancedData = {
                 ...data,
                 name: cityName.charAt(0).toUpperCase() + cityName.slice(1),
-                main: {
-                    temp: data.main?.temp || 20,
-                    feels_like: data.main?.feels_like || 20,
-                    temp_min: (data.main?.temp || 20) - 2,
-                    temp_max: (data.main?.temp || 20) + 3,
-                    humidity: data.main?.humidity || 50,
-                    pressure: data.main?.pressure || 1013
-                },
-                wind: {
-                    speed: data.wind?.speed || 3,
-                    gust: (data.wind?.speed || 3) + 2
-                },
-                visibility: data.visibility || 10000,
-                sys: {
-                    sunrise: data.sys?.sunrise || 1678867200,
-                    sunset: data.sys?.sunset || 1678910400
-                },
                 formatted: {
                     time: new Date().toLocaleTimeString('en-US', { 
                         hour: '2-digit', 
@@ -206,14 +189,15 @@ const WeatherService = (() => {
                         month: 'long',
                         day: 'numeric'
                     }),
-                    sunrise: formatTime(data.sys?.sunrise || 1678867200),
-                    sunset: formatTime(data.sys?.sunset || 1678910400)
+                    sunrise: formatTime(data.sys?.sunrise),
+                    sunset: formatTime(data.sys?.sunset)
                 },
                 tips: getWeatherTips(
                     data.weather?.[0]?.main || 'Clear',
                     data.main?.temp || 20
                 ),
-                conditionInfo: WEATHER_CONDITIONS[data.weather?.[0]?.main] || WEATHER_CONDITIONS.Clear
+                uv: Math.floor(Math.random() * 10) + 1, // Mock UV data
+                airQuality: ['Good', 'Moderate', 'Poor'][Math.floor(Math.random() * 3)] // Mock AQ data
             };
             
             // Cache the enhanced data
@@ -238,7 +222,7 @@ const WeatherService = (() => {
                 weather: [{
                     main: 'Clear',
                     description: 'clear sky',
-                    icon: '01d'
+                    icon: 'https://openweathermap.org/img/wn/01d@2x.png'
                 }],
                 wind: {
                     speed: 3.5,
@@ -264,7 +248,8 @@ const WeatherService = (() => {
                     sunset: '6:45 PM'
                 },
                 tips: getWeatherTips('Clear', 22),
-                conditionInfo: WEATHER_CONDITIONS.Clear
+                uv: 5,
+                airQuality: 'Moderate'
             };
             
             setToCache(cacheKey, mockData);

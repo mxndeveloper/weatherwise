@@ -22,28 +22,29 @@ const UIManager = (() => {
     };
     
     // Weather display elements
-    const weatherElements = {
-        location: document.getElementById('location'),
-        cityName: document.querySelector('.city-name'),
-        localTime: document.getElementById('local-time'),
-        currentDate: document.getElementById('current-date'),
-        mainTemperature: document.getElementById('main-temperature'),
-        feelsLike: document.getElementById('feels-like'),
-        weatherIcon: document.getElementById('weather-icon'),
-        weatherMain: document.getElementById('weather-main'),
-        weatherDescription: document.getElementById('weather-description'),
-        humidity: document.getElementById('humidity'),
-        wind: document.getElementById('wind'),
-        windGust: document.getElementById('wind-gust'),
-        pressure: document.getElementById('pressure'),
-        visibility: document.getElementById('visibility'),
-        tempRange: document.getElementById('temp-range'),
-        sunriseTime: document.getElementById('sunrise-time'),
-        sunsetTime: document.getElementById('sunset-time'),
-        uvIndex: document.getElementById('uv-index'),
-        airQuality: document.getElementById('air-quality'),
-        forecastContainer: document.getElementById('forecast-container')
-    };
+const weatherElements = {
+    location: document.getElementById('location'),
+    cityName: document.querySelector('.city-name'),
+    localTime: document.getElementById('local-time'),
+    currentDate: document.getElementById('current-date'),
+    mainTemperature: document.getElementById('main-temperature'),
+    feelsLike: document.getElementById('feels-like'),
+    weatherIcon: document.getElementById('weather-icon'),
+    weatherMain: document.getElementById('weather-main'),
+    weatherDescription: document.getElementById('weather-description'),
+    humidity: document.getElementById('humidity'),
+    wind: document.getElementById('wind'),
+    windGust: document.getElementById('wind-gust'),
+    pressure: document.getElementById('pressure'),
+    visibility: document.getElementById('visibility'),
+    tempRange: document.getElementById('temp-range'),
+    sunriseTime: document.getElementById('sunrise-time'),
+    sunsetTime: document.getElementById('sunset-time'),
+    uvIndex: document.getElementById('uv-index'),
+    airQuality: document.getElementById('air-quality'),
+    forecastContainer: document.getElementById('forecast-container'),
+    weatherAdvice: document.getElementById('weather-advice') // Add this line
+};
     
     // Initialize UI
     function init() {
@@ -312,8 +313,12 @@ const UIManager = (() => {
         weatherElements.sunriseTime.textContent = data.formatted?.sunrise || '--:-- AM';
         weatherElements.sunsetTime.textContent = data.formatted?.sunset || '--:-- PM';
         
-        // Update tips
-        if (data.tips && data.tips.length > 0) {
+        // Update UV index and air quality (mock data for now)
+        weatherElements.uvIndex.textContent = data.uv || '--';
+        weatherElements.airQuality.textContent = data.airQuality || '--';
+        
+        // Update tips - only if weatherAdvice element exists
+        if (weatherElements.weatherAdvice && data.tips && data.tips.length > 0) {
             weatherElements.weatherAdvice.textContent = data.tips[0];
         }
         
@@ -329,9 +334,10 @@ const UIManager = (() => {
         showWeather();
     }
     
+
     // Display forecast
     function displayForecast(forecastData) {
-        if (!forecastData || !forecastData.length) return;
+        if (!forecastData || !forecastData.length || !weatherElements.forecastContainer) return;
         
         weatherElements.forecastContainer.innerHTML = '';
         
@@ -339,11 +345,17 @@ const UIManager = (() => {
             const card = document.createElement('div');
             card.className = 'forecast-card';
             
+            // Ensure icon URL is complete
+            let iconUrl = day.icon;
+            if (iconUrl && !iconUrl.startsWith('http')) {
+                iconUrl = `https://openweathermap.org/img/wn/${iconUrl}@2x.png`;
+            }
+            
             card.innerHTML = `
                 <div class="forecast-date">${day.date}</div>
-                <img src="${day.icon}" alt="${day.condition}" class="forecast-icon">
+                <img src="${iconUrl || ''}" alt="${day.condition || 'Weather'}" class="forecast-icon">
                 <div class="forecast-temp">${Math.round(day.temp)}°</div>
-                <div class="forecast-desc">${day.condition}</div>
+                <div class="forecast-desc">${day.condition || ''}</div>
             `;
             
             weatherElements.forecastContainer.appendChild(card);
