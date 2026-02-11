@@ -1,0 +1,13 @@
+{
+  "name": "weatherwise",
+  "version": "1.0.0",
+  "description": "Weather App",
+  "main": "index.html",
+  "scripts": {
+    "dev": "serve .",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}
