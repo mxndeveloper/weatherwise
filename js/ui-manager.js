@@ -22,29 +22,29 @@ const UIManager = (() => {
     };
     
     // Weather display elements
-const weatherElements = {
-    location: document.getElementById('location'),
-    cityName: document.querySelector('.city-name'),
-    localTime: document.getElementById('local-time'),
-    currentDate: document.getElementById('current-date'),
-    mainTemperature: document.getElementById('main-temperature'),
-    feelsLike: document.getElementById('feels-like'),
-    weatherIcon: document.getElementById('weather-icon'),
-    weatherMain: document.getElementById('weather-main'),
-    weatherDescription: document.getElementById('weather-description'),
-    humidity: document.getElementById('humidity'),
-    wind: document.getElementById('wind'),
-    windGust: document.getElementById('wind-gust'),
-    pressure: document.getElementById('pressure'),
-    visibility: document.getElementById('visibility'),
-    tempRange: document.getElementById('temp-range'),
-    sunriseTime: document.getElementById('sunrise-time'),
-    sunsetTime: document.getElementById('sunset-time'),
-    uvIndex: document.getElementById('uv-index'),
-    airQuality: document.getElementById('air-quality'),
-    forecastContainer: document.getElementById('forecast-container'),
-    weatherAdvice: document.getElementById('weather-advice') // Add this line
-};
+    const weatherElements = {
+        location: document.getElementById('location'),
+        cityName: document.querySelector('.city-name'),
+        localTime: document.getElementById('local-time'),
+        currentDate: document.getElementById('current-date'),
+        mainTemperature: document.getElementById('main-temperature'),
+        feelsLike: document.getElementById('feels-like'),
+        weatherIcon: document.getElementById('weather-icon'),
+        weatherMain: document.getElementById('weather-main'),
+        weatherDescription: document.getElementById('weather-description'),
+        humidity: document.getElementById('humidity'),
+        wind: document.getElementById('wind'),
+        windGust: document.getElementById('wind-gust'),
+        pressure: document.getElementById('pressure'),
+        visibility: document.getElementById('visibility'),
+        tempRange: document.getElementById('temp-range'),
+        sunriseTime: document.getElementById('sunrise-time'),
+        sunsetTime: document.getElementById('sunset-time'),
+        uvIndex: document.getElementById('uv-index'),
+        airQuality: document.getElementById('air-quality'),
+        forecastContainer: document.getElementById('forecast-container'),
+        weatherAdvice: document.getElementById('weather-advice')
+    };
     
     // Initialize UI
     function init() {
@@ -55,9 +55,10 @@ const weatherElements = {
         setupCanvas();
     }
     
-    // Setup canvas for background effects
+    // ==================== CANVAS BACKGROUND ====================
     function setupCanvas() {
         const canvas = elements.weatherCanvas;
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         
         function resizeCanvas() {
@@ -67,7 +68,6 @@ const weatherElements = {
         
         function drawWeatherBackground(condition = 'Clear') {
             if (!canvas.width || !canvas.height) return;
-            
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
@@ -122,11 +122,9 @@ const weatherElements = {
         function drawRain(ctx, canvas) {
             ctx.strokeStyle = 'rgba(135, 206, 235, 0.3)';
             ctx.lineWidth = 2;
-            
             for (let i = 0; i < 50; i++) {
                 const x = (Math.random() * canvas.width);
                 const y = (Date.now() * 0.1 + i * 20) % canvas.height;
-                
                 ctx.beginPath();
                 ctx.moveTo(x, y);
                 ctx.lineTo(x + 5, y + 20);
@@ -137,19 +135,17 @@ const weatherElements = {
         resizeCanvas();
         drawWeatherBackground();
         
-        // Animation loop
         function animate() {
             drawWeatherBackground();
             requestAnimationFrame(animate);
         }
-        
         window.addEventListener('resize', resizeCanvas);
         animate();
         
         return { drawWeatherBackground };
     }
     
-    // Theme management
+    // ==================== THEME ====================
     function loadTheme() {
         const savedTheme = localStorage.getItem('weatherAppTheme') || 'light';
         setTheme(savedTheme);
@@ -160,12 +156,10 @@ const weatherElements = {
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('weatherAppTheme', theme);
         
-        // Update theme toggle icon
-        const icon = elements.themeToggle.querySelector('i');
-        icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        const icon = elements.themeToggle?.querySelector('i');
+        if (icon) icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
         
-        // Update meta theme color
-        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', 
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content',
             theme === 'dark' ? '#121212' : '#4361ee'
         );
     }
@@ -174,7 +168,7 @@ const weatherElements = {
         setTheme(currentTheme === 'light' ? 'dark' : 'light');
     }
     
-    // Units management
+    // ==================== UNITS ====================
     function loadUnits() {
         const savedUnits = localStorage.getItem('weatherAppUnits') || 'metric';
         isMetric = savedUnits === 'metric';
@@ -185,17 +179,18 @@ const weatherElements = {
         isMetric = !isMetric;
         localStorage.setItem('weatherAppUnits', isMetric ? 'metric' : 'imperial');
         updateUnitsDisplay();
-        // Trigger unit conversion callback if set
         if (window.onUnitsChange) {
             window.onUnitsChange(isMetric);
         }
     }
     
     function updateUnitsDisplay() {
-        elements.unitsToggle.textContent = isMetric ? '°C' : '°F';
+        if (elements.unitsToggle) {
+            elements.unitsToggle.textContent = isMetric ? '°C' : '°F';
+        }
     }
     
-    // Search history management
+    // ==================== SEARCH HISTORY ====================
     function loadSearchHistory() {
         const history = JSON.parse(localStorage.getItem('weatherSearchHistory')) || [];
         updateHistoryDisplay(history);
@@ -203,90 +198,87 @@ const weatherElements = {
     
     function addToHistory(city) {
         let history = JSON.parse(localStorage.getItem('weatherSearchHistory')) || [];
-        
-        // Remove if already exists
         history = history.filter(item => item.toLowerCase() !== city.toLowerCase());
-        
-        // Add to beginning
         history.unshift(city);
-        
-        // Keep only last 5 items
         history = history.slice(0, 5);
-        
         localStorage.setItem('weatherSearchHistory', JSON.stringify(history));
         updateHistoryDisplay(history);
     }
     
     function updateHistoryDisplay(history) {
+        if (!elements.historyList) return;
         elements.historyList.innerHTML = '';
-        
         history.forEach(city => {
             const item = document.createElement('div');
             item.className = 'history-item';
             item.textContent = city;
             item.addEventListener('click', () => {
-                elements.citiesSelect.value = city.toLowerCase();
-                elements.getWeatherBtn.click();
+                if (elements.citiesSelect) {
+                    elements.citiesSelect.value = city.toLowerCase();
+                    elements.getWeatherBtn?.click();
+                }
             });
             elements.historyList.appendChild(item);
         });
     }
     
-    // UI State Management
+    // ==================== UI STATE ====================
     function showLoading() {
-        elements.loadingState.classList.add('active');
-        elements.errorState.classList.remove('active');
-        elements.weatherContainer.classList.remove('active');
+        elements.loadingState?.classList.add('active');
+        elements.errorState?.classList.remove('active');
+        elements.weatherContainer?.classList.remove('active');
     }
     
     function hideLoading() {
-        elements.loadingState.classList.remove('active');
+        elements.loadingState?.classList.remove('active');
     }
     
     function showError(message) {
-        elements.errorMessage.textContent = message;
-        elements.errorState.classList.add('active');
-        elements.loadingState.classList.remove('active');
-        elements.weatherContainer.classList.remove('active');
+        if (elements.errorMessage) elements.errorMessage.textContent = message;
+        elements.errorState?.classList.add('active');
+        elements.loadingState?.classList.remove('active');
+        elements.weatherContainer?.classList.remove('active');
     }
     
     function hideError() {
-        elements.errorState.classList.remove('active');
+        elements.errorState?.classList.remove('active');
     }
     
     function showWeather() {
-        elements.weatherContainer.classList.add('active');
-        elements.loadingState.classList.remove('active');
-        elements.errorState.classList.remove('active');
+        elements.weatherContainer?.classList.add('active');
+        elements.loadingState?.classList.remove('active');
+        elements.errorState?.classList.remove('active');
     }
     
-    // Display weather data
+    // ==================== DISPLAY WEATHER ====================
     function displayWeather(data, isMetric = true) {
         if (!data) return;
         
-        // Update location and time
-        weatherElements.cityName.textContent = data.name || 'N/A';
-        weatherElements.localTime.textContent = data.formatted?.time || '--:-- --';
-        weatherElements.currentDate.textContent = data.formatted?.date || '-- --- --';
+        // ----- Location & Time -----
+        if (weatherElements.cityName) weatherElements.cityName.textContent = data.name || 'N/A';
+        if (weatherElements.localTime) weatherElements.localTime.textContent = data.formatted?.time || '--:-- --';
+        if (weatherElements.currentDate) weatherElements.currentDate.textContent = data.formatted?.date || '-- --- --';
         
-        // Update temperature (with unit conversion if needed)
+        // ----- Temperatures -----
         const temp = isMetric ? data.main?.temp : WeatherService.convertTemp(data.main?.temp, true);
         const feelsLikeTemp = isMetric ? data.main?.feels_like : WeatherService.convertTemp(data.main?.feels_like, true);
         const tempMin = isMetric ? data.main?.temp_min : WeatherService.convertTemp(data.main?.temp_min, true);
         const tempMax = isMetric ? data.main?.temp_max : WeatherService.convertTemp(data.main?.temp_max, true);
         
-        weatherElements.mainTemperature.textContent = temp !== undefined ? Math.round(temp) : '--';
-        weatherElements.feelsLike.textContent = feelsLikeTemp !== undefined ? Math.round(feelsLikeTemp) : '--';
-        weatherElements.tempRange.textContent = `${tempMin !== undefined ? Math.round(tempMin) : '--'}° / ${tempMax !== undefined ? Math.round(tempMax) : '--'}°`;
+        if (weatherElements.mainTemperature) {
+            weatherElements.mainTemperature.textContent = temp !== undefined ? Math.round(temp) : '--';
+        }
+        if (weatherElements.feelsLike) {
+            weatherElements.feelsLike.textContent = feelsLikeTemp !== undefined ? Math.round(feelsLikeTemp) : '--';
+        }
         
-        // Update weather condition
+        // ----- Weather Condition -----
         const weather = data.weather?.[0];
-        weatherElements.weatherMain.textContent = weather?.main || 'N/A';
-        weatherElements.weatherDescription.textContent = weather?.description || 'N/A';
+        if (weatherElements.weatherMain) weatherElements.weatherMain.textContent = weather?.main || 'N/A';
+        if (weatherElements.weatherDescription) weatherElements.weatherDescription.textContent = weather?.description || 'N/A';
         
-        // Update icon
-        if (weather?.icon) {
-            // Convert icon code to full URL
+        // ----- Weather Icon (full URL) -----
+        if (weather?.icon && weatherElements.weatherIcon) {
             const iconUrl = weather.icon.startsWith('http')
                 ? weather.icon
                 : `https://openweathermap.org/img/wn/${weather.icon}@2x.png`;
@@ -294,52 +286,94 @@ const weatherElements = {
             weatherElements.weatherIcon.alt = weather.description || 'Weather icon';
         }
         
-        // Update other metrics
-        weatherElements.humidity.textContent = data.main?.humidity !== undefined ? `${data.main.humidity}%` : 'N/A';
+        // ----- STATS CARDS (with .value / .unit structure) -----
         
+        // 1. Humidity
+        const humidityEl = weatherElements.humidity;
+        if (humidityEl) {
+            const valSpan = humidityEl.querySelector('.value');
+            const unitSpan = humidityEl.querySelector('.unit');
+            if (valSpan) valSpan.textContent = data.main?.humidity ?? '--';
+            if (unitSpan) unitSpan.textContent = '%';
+        }
+        
+        // 2. Wind Speed
         const windSpeed = isMetric ? data.wind?.speed : WeatherService.convertSpeed(data.wind?.speed, true);
+        const windEl = weatherElements.wind;
+        if (windEl) {
+            const valSpan = windEl.querySelector('.value');
+            const unitSpan = windEl.querySelector('.unit');
+            if (valSpan) valSpan.textContent = windSpeed !== undefined ? windSpeed.toFixed(1) : '--';
+            if (unitSpan) unitSpan.textContent = isMetric ? 'm/s' : 'mph';
+        }
+        
+        // 3. Pressure
+        const pressureEl = weatherElements.pressure;
+        if (pressureEl) {
+            const valSpan = pressureEl.querySelector('.value');
+            const unitSpan = pressureEl.querySelector('.unit');
+            if (valSpan) valSpan.textContent = data.main?.pressure ?? '--';
+            if (unitSpan) unitSpan.textContent = 'hPa';
+        }
+        
+        // 4. Visibility
+        const visibility = isMetric
+            ? WeatherService.convertVisibility(data.visibility)
+            : WeatherService.convertVisibility(data.visibility, true);
+        const visEl = weatherElements.visibility;
+        if (visEl) {
+            const valSpan = visEl.querySelector('.value');
+            const unitSpan = visEl.querySelector('.unit');
+            if (valSpan) valSpan.textContent = visibility !== undefined ? visibility.toFixed(1) : '--';
+            if (unitSpan) unitSpan.textContent = isMetric ? 'km' : 'mi';
+        }
+        
+        // 5. Min/Max Temperature (special structure)
+        const tempRangeEl = weatherElements.tempRange;
+        if (tempRangeEl) {
+            const minValSpan = tempRangeEl.querySelector('.temp-range-value span:first-child .value');
+            const maxValSpan = tempRangeEl.querySelector('.temp-range-value span:last-child .value');
+            if (minValSpan) minValSpan.textContent = tempMin !== undefined ? Math.round(tempMin) : '--';
+            if (maxValSpan) maxValSpan.textContent = tempMax !== undefined ? Math.round(tempMax) : '--';
+            // Units are already in HTML, no need to change
+        }
+        
+        // 6. Wind Gust
         const windGustSpeed = isMetric ? data.wind?.gust : WeatherService.convertSpeed(data.wind?.gust, true);
-        const visibility = isMetric ? 
-            WeatherService.convertVisibility(data.visibility) : 
-            WeatherService.convertVisibility(data.visibility, true);
+        const gustEl = weatherElements.windGust;
+        if (gustEl) {
+            const valSpan = gustEl.querySelector('.value');
+            const unitSpan = gustEl.querySelector('.unit');
+            if (valSpan) valSpan.textContent = windGustSpeed !== undefined ? windGustSpeed.toFixed(1) : '--';
+            if (unitSpan) unitSpan.textContent = isMetric ? 'm/s' : 'mph';
+        }
         
-        weatherElements.wind.textContent = windSpeed !== undefined ? 
-            `${windSpeed.toFixed(1)} ${isMetric ? 'm/s' : 'mph'}` : 'N/A';
+        // ----- Sunrise / Sunset -----
+        if (weatherElements.sunriseTime) weatherElements.sunriseTime.textContent = data.formatted?.sunrise || '--:-- AM';
+        if (weatherElements.sunsetTime) weatherElements.sunsetTime.textContent = data.formatted?.sunset || '--:-- PM';
         
-        weatherElements.windGust.textContent = windGustSpeed !== undefined ? 
-            `${windGustSpeed.toFixed(1)} ${isMetric ? 'm/s' : 'mph'}` : 'N/A';
+        // ----- UV Index & Air Quality (mock) -----
+        if (weatherElements.uvIndex) weatherElements.uvIndex.textContent = data.uv || '--';
+        if (weatherElements.airQuality) weatherElements.airQuality.textContent = data.airQuality || '--';
         
-        weatherElements.pressure.textContent = data.main?.pressure !== undefined ? `${data.main.pressure} hPa` : 'N/A';
-        weatherElements.visibility.textContent = visibility !== undefined ? 
-            `${visibility.toFixed(1)} ${isMetric ? 'km' : 'mi'}` : 'N/A';
-        
-        // Update sunrise/sunset
-        weatherElements.sunriseTime.textContent = data.formatted?.sunrise || '--:-- AM';
-        weatherElements.sunsetTime.textContent = data.formatted?.sunset || '--:-- PM';
-        
-        // Update UV index and air quality (mock data for now)
-        weatherElements.uvIndex.textContent = data.uv || '--';
-        weatherElements.airQuality.textContent = data.airQuality || '--';
-        
-        // Update tips - only if weatherAdvice element exists
+        // ----- Weather Tips -----
         if (weatherElements.weatherAdvice && data.tips && data.tips.length > 0) {
             weatherElements.weatherAdvice.textContent = data.tips[0];
         }
         
-        // Update background canvas
+        // ----- Background Canvas -----
         if (window.canvasManager) {
             window.canvasManager.drawWeatherBackground(weather?.main);
         }
         
-        // Add to search history
-        addToHistory(data.name);
+        // ----- Add to search history -----
+        if (data.name) addToHistory(data.name);
         
-        // Show weather container
+        // ----- Show weather container -----
         showWeather();
     }
     
-
-    // Display forecast
+    // ==================== DISPLAY FORECAST ====================
     function displayForecast(forecastData) {
         if (!forecastData || !forecastData.length || !weatherElements.forecastContainer) return;
         
@@ -349,16 +383,15 @@ const weatherElements = {
             const card = document.createElement('div');
             card.className = 'forecast-card';
             
-            // Ensure icon URL is complete
             let iconUrl = day.icon;
             if (iconUrl && !iconUrl.startsWith('http')) {
                 iconUrl = `https://openweathermap.org/img/wn/${iconUrl}@2x.png`;
             }
             
             card.innerHTML = `
-                <div class="forecast-date">${day.date}</div>
+                <div class="forecast-date">${day.date || ''}</div>
                 <img src="${iconUrl || ''}" alt="${day.condition || 'Weather'}" class="forecast-icon">
-                <div class="forecast-temp">${Math.round(day.temp)}°</div>
+                <div class="forecast-temp">${Math.round(day.temp) || '--'}°</div>
                 <div class="forecast-desc">${day.condition || ''}</div>
             `;
             
@@ -366,49 +399,51 @@ const weatherElements = {
         });
     }
     
-    // Event listeners setup
+    // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
         // Theme toggle
-        elements.themeToggle.addEventListener('click', toggleTheme);
+        elements.themeToggle?.addEventListener('click', toggleTheme);
         
         // Units toggle
-        elements.unitsToggle.addEventListener('click', toggleUnits);
+        elements.unitsToggle?.addEventListener('click', toggleUnits);
         
         // Retry button
-        elements.retryBtn.addEventListener('click', () => {
-            elements.getWeatherBtn.click();
+        elements.retryBtn?.addEventListener('click', () => {
+            elements.getWeatherBtn?.click();
         });
         
         // Current location button
-        elements.currentLocationBtn.addEventListener('click', async () => {
+        elements.currentLocationBtn?.addEventListener('click', async () => {
             try {
                 showLoading();
                 const coords = await WeatherService.getCurrentLocation();
                 const city = await WeatherService.getCityFromCoords(coords.lat, coords.lon);
-                elements.citiesSelect.value = city;
-                elements.getWeatherBtn.click();
+                if (elements.citiesSelect) {
+                    elements.citiesSelect.value = city;
+                    elements.getWeatherBtn?.click();
+                }
             } catch (error) {
                 showError('Unable to get your location. Please select a city manually.');
             }
         });
         
         // Enter key in select
-        elements.citiesSelect.addEventListener('keypress', (e) => {
+        elements.citiesSelect?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                elements.getWeatherBtn.click();
+                elements.getWeatherBtn?.click();
             }
         });
         
         // Prevent form submission
-        elements.getWeatherBtn.addEventListener('click', (e) => {
+        elements.getWeatherBtn?.addEventListener('click', (e) => {
             e.preventDefault();
         });
     }
     
-    // Public API
+    // ==================== PUBLIC API ====================
     return {
         init,
-        setupCanvas, 
+        setupCanvas,
         showLoading,
         hideLoading,
         showError,

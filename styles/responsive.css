@@ -6,9 +6,6 @@
         max-width: 1000px;
     }
     
-    .weather-stats {
-        grid-template-columns: repeat(2, 1fr);
-    }
 }
 
 /* Tablets */
