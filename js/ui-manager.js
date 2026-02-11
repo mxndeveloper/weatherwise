@@ -286,7 +286,11 @@ const weatherElements = {
         
         // Update icon
         if (weather?.icon) {
-            weatherElements.weatherIcon.src = weather.icon;
+            // Convert icon code to full URL
+            const iconUrl = weather.icon.startsWith('http')
+                ? weather.icon
+                : `https://openweathermap.org/img/wn/${weather.icon}@2x.png`;
+            weatherElements.weatherIcon.src = iconUrl;
             weatherElements.weatherIcon.alt = weather.description || 'Weather icon';
         }
         
