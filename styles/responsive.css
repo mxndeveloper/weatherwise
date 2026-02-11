@@ -1,14 +1,20 @@
 /* ===== RESPONSIVE DESIGN ===== */
 
-/* Large Desktops */
+/* Desktop - 3 column grid for weather stats */
+@media (min-width: 1025px) {
+    .weather-stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Large Desktops (1200px and below) */
 @media (max-width: 1200px) {
     .container {
         max-width: 1000px;
     }
-    
 }
 
-/* Tablets */
+/* Tablets (768px and below) */
 @media (max-width: 768px) {
     .container {
         padding: 0 15px;
@@ -71,7 +77,7 @@
     }
 }
 
-/* Mobile Phones */
+/* Mobile Phones (480px and below) */
 @media (max-width: 480px) {
     .logo h1 {
         font-size: 1.5rem;

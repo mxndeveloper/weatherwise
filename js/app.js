@@ -7,7 +7,7 @@ const WeatherApp = (() => {
         // Initialize UI Manager
         UIManager.init();
         
-        // Setup canvas manager - check if function exists
+        // Setup canvas manager
         if (typeof UIManager.setupCanvas === 'function') {
             window.canvasManager = UIManager.setupCanvas();
         } else {
@@ -18,13 +18,19 @@ const WeatherApp = (() => {
         // Get DOM elements
         const { getWeatherBtn, citiesSelect } = UIManager.elements;
         
+        // ----- SET DEFAULT CITY -----
+        if (citiesSelect) {
+            // Select "New York" by default
+            citiesSelect.value = 'new york';
+        }
+        
         // Set up main weather button click handler
         getWeatherBtn.addEventListener('click', handleGetWeather);
         
         // Set up unit change handler
         window.onUnitsChange = handleUnitsChange;
         
-        // Set up initial state
+        // Update button state (will now be enabled because a city is selected)
         updateButtonState();
         
         // Listen for select changes
@@ -37,12 +43,13 @@ const WeatherApp = (() => {
             }
         }, 10 * 60 * 1000);
         
-        // Load initial weather for a default city
+        // ----- INITIAL WEATHER FETCH -----
+        // Small delay to ensure everything is ready
         setTimeout(() => {
             if (citiesSelect.value) {
                 handleGetWeather();
             }
-        }, 1000);
+        }, 100);
         
         console.log('WeatherWise App Ready!');
     }
@@ -50,7 +57,9 @@ const WeatherApp = (() => {
     // Update button state based on selection
     function updateButtonState() {
         const { getWeatherBtn, citiesSelect } = UIManager.elements;
-        getWeatherBtn.disabled = !citiesSelect.value;
+        if (getWeatherBtn && citiesSelect) {
+            getWeatherBtn.disabled = !citiesSelect.value;
+        }
     }
     
     // Handle get weather button click
@@ -63,26 +72,15 @@ const WeatherApp = (() => {
         }
         
         try {
-            // Show loading state
-            UIManager.showLoading();
-            
-            // Fetch weather data
             const weatherData = await WeatherService.getWeather(city);
-            
-            // Display weather data
             UIManager.displayWeather(weatherData, UIManager.isMetric);
-            
-            // Fetch and display forecast
             const forecastData = await WeatherService.getForecast(city);
             UIManager.displayForecast(forecastData);
-            
-            // Log successful fetch
-            console.log(`Weather data fetched for ${city}:`, weatherData);
             
         } catch (error) {
             console.error('Error fetching weather:', error);
             
-            // Check if it's a Paris error (special case for FreeCodeCamp tests)
+            // Special case for Paris (FreeCodeCamp test)
             if (city.toLowerCase() === 'paris') {
                 alert("Something went wrong, please try again later");
             } else {
@@ -97,7 +95,6 @@ const WeatherApp = (() => {
     function handleUnitsChange(isMetric) {
         const city = UIManager.elements.citiesSelect.value;
         if (city) {
-            // Re-fetch and display with new units
             handleGetWeather();
         }
     }
@@ -113,7 +110,6 @@ const WeatherApp = (() => {
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     WeatherApp.init();
-    
 });
 
 // Export for testing

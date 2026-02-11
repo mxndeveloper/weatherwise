@@ -13,7 +13,7 @@
     --background-color: #f8f9fa;
     --surface-color: #ffffff;
     --text-primary: #212529;
-    --text-secondary: #6c757d;
+    --text-secondary: #97a3ad;
     --border-color: #e9ecef;
     --success-color: #4cc9f0;
     --warning-color: #f8961e;
@@ -64,7 +64,8 @@ body {
     width: 100%;
     height: 100%;
     z-index: -1;
-    opacity: 0.3;
+    opacity: 1;        /* was 0.3 – tiny bump */
+    background: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.02) 0%, transparent 80%);
 }
 
 .container {

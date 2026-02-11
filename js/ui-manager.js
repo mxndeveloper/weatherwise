@@ -3,7 +3,7 @@ const UIManager = (() => {
     let isMetric = true;
     let currentTheme = 'light';
     
-    // DOM Elements
+    // ==================== DOM ELEMENTS ====================
     const elements = {
         weatherContainer: document.getElementById('weather-container'),
         loadingState: document.getElementById('loading-state'),
@@ -21,7 +21,6 @@ const UIManager = (() => {
         weatherCanvas: document.getElementById('weather-canvas')
     };
     
-    // Weather display elements
     const weatherElements = {
         location: document.getElementById('location'),
         cityName: document.querySelector('.city-name'),
@@ -46,103 +45,309 @@ const UIManager = (() => {
         weatherAdvice: document.getElementById('weather-advice')
     };
     
-    // Initialize UI
-    function init() {
-        loadTheme();
-        loadUnits();
-        loadSearchHistory();
-        setupEventListeners();
-        setupCanvas();
+    // ==================== CANVAS / PARTICLE SYSTEM (PROFESSIONAL) ====================
+    let ctx;
+    let particles = [];
+    let canvasAnimationFrame = null;
+    let lastTimestamp = 0;
+    let weatherCondition = 'Clear';
+
+    // Particle profiles per weather condition
+    const PARTICLE_CONFIG = {
+        Clear: {
+            count: 30,
+            types: ['sparkle', 'haze'],
+            colors: ['rgba(255, 220, 150, 0.6)', 'rgba(255, 200, 100, 0.4)'],
+            speed: 0.05,
+            size: [2, 6],
+            opacity: [0.4, 0.8],
+            blur: false
+        },
+        Clouds: {
+            count: 18,
+            types: ['cloud'],
+            colors: ['rgba(220, 240, 255, 0.5)', 'rgba(200, 220, 240, 0.45)'],
+            speed: 0.02,
+            size: [40, 90],
+            opacity: [0.2, 0.35],
+            blur: true
+        },
+        Rain: {
+            count: 85,
+            types: ['rain'],
+            colors: ['rgba(160, 210, 255, 0.7)', 'rgba(130, 190, 255, 0.65)'],
+            speed: 6,
+            size: [12, 22],
+            opacity: [0.5, 0.8],
+            angle: -0.2, // slant
+            blur: false
+        },
+        Snow: {
+            count: 60,
+            types: ['snow'],
+            colors: ['rgba(255, 255, 255, 0.9)', 'rgba(235, 245, 255, 0.85)'],
+            speed: 2,
+            size: [3, 8],
+            opacity: [0.7, 1],
+            drift: 0.3,
+            blur: true
+        },
+        Thunderstorm: {
+            count: 100,
+            types: ['rain'],
+            colors: ['rgba(100, 170, 255, 0.8)', 'rgba(70, 140, 255, 0.75)'],
+            speed: 10,
+            size: [16, 26],
+            opacity: [0.6, 0.9],
+            angle: -0.3,
+            lightning: true,
+            blur: false
+        },
+        Mist: {
+            count: 15,
+            types: ['cloud'],
+            colors: ['rgba(210, 220, 230, 0.35)', 'rgba(190, 200, 210, 0.3)'],
+            speed: 0.01,
+            size: [70, 120],
+            opacity: [0.15, 0.25],
+            blur: true
+        }
+    };
+
+    function initParticles(condition) {
+        weatherCondition = condition || 'Clear';
+        particles = [];
+
+        const cfg = PARTICLE_CONFIG[weatherCondition] || PARTICLE_CONFIG.Clear;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+
+        for (let i = 0; i < cfg.count; i++) {
+            const type = cfg.types[Math.floor(Math.random() * cfg.types.length)];
+            const baseParticle = {
+                x: Math.random() * w,
+                y: Math.random() * h,
+                type,
+                opacity: cfg.opacity[0] + Math.random() * (cfg.opacity[1] - cfg.opacity[0]),
+                color: cfg.colors[Math.floor(Math.random() * cfg.colors.length)]
+            };
+
+            switch (type) {
+                case 'sparkle':
+                    particles.push({
+                        ...baseParticle,
+                        radius: cfg.size[0] + Math.random() * (cfg.size[1] - cfg.size[0]),
+                        speedX: (Math.random() - 0.5) * cfg.speed,
+                        speedY: (Math.random() - 0.5) * cfg.speed * 0.6,
+                        pulse: 0.5 + Math.random() * 0.5,
+                        pulseSpeed: 0.02 + Math.random() * 0.03
+                    });
+                    break;
+                case 'haze':
+                    particles.push({
+                        ...baseParticle,
+                        radius: 10 + Math.random() * 30,
+                        speedX: (Math.random() - 0.5) * 0.03,
+                        speedY: (Math.random() - 0.5) * 0.02,
+                        opacity: cfg.opacity[0] * 0.5,
+                        color: 'rgba(255, 235, 200, 0.2)'
+                    });
+                    break;
+                case 'cloud':
+                    particles.push({
+                        ...baseParticle,
+                        radius: cfg.size[0] + Math.random() * (cfg.size[1] - cfg.size[0]),
+                        speedX: cfg.speed + Math.random() * 0.02,
+                        speedY: (Math.random() - 0.5) * 0.003,
+                        subParticles: 3 + Math.floor(Math.random() * 3) // for fluffy look
+                    });
+                    break;
+                case 'rain':
+                    particles.push({
+                        ...baseParticle,
+                        length: cfg.size[0] + Math.random() * (cfg.size[1] - cfg.size[0]),
+                        speedY: cfg.speed + Math.random() * 3,
+                        angle: cfg.angle || 0,
+                        thickness: 1 + Math.random() * 1.2
+                    });
+                    break;
+                case 'snow':
+                    particles.push({
+                        ...baseParticle,
+                        radius: cfg.size[0] + Math.random() * (cfg.size[1] - cfg.size[0]),
+                        speedX: (Math.random() - 0.5) * (cfg.drift || 0.2),
+                        speedY: cfg.speed * 0.5 + Math.random() * cfg.speed,
+                        sway: Math.random() * 0.5,
+                        phase: Math.random() * 100
+                    });
+                    break;
+            }
+        }
     }
-    
-    // ==================== CANVAS BACKGROUND ====================
+
+    function drawAnimatedBackground(timestamp) {
+        if (!ctx || !elements.weatherCanvas) return;
+
+        if (!lastTimestamp) lastTimestamp = timestamp;
+        const deltaTime = Math.min(100, timestamp - lastTimestamp); // cap for tab inactive
+        lastTimestamp = timestamp;
+
+        const canvas = elements.weatherCanvas;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // ----- 1. DYNAMIC GRADIENT (smooth, atmospheric) -----
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        const time = Date.now() * 0.0003;
+
+        switch(weatherCondition) {
+            case 'Clear':
+                gradient.addColorStop(0, `rgba(255, 225, 150, ${0.15 + Math.sin(time) * 0.05})`);
+                gradient.addColorStop(1, `rgba(135, 206, 235, ${0.1 + Math.cos(time * 0.7) * 0.03})`);
+                break;
+            case 'Clouds':
+            case 'Mist':
+                gradient.addColorStop(0, `rgba(200, 210, 225, ${0.2 + Math.sin(time * 0.2) * 0.05})`);
+                gradient.addColorStop(1, `rgba(160, 170, 190, ${0.15 + Math.cos(time * 0.25) * 0.04})`);
+                break;
+            case 'Rain':
+            case 'Thunderstorm':
+                gradient.addColorStop(0, `rgba(80, 110, 140, ${0.25 + Math.sin(time * 0.5) * 0.05})`);
+                gradient.addColorStop(1, `rgba(40, 60, 90, ${0.2 + Math.cos(time * 0.6) * 0.04})`);
+                break;
+            case 'Snow':
+                gradient.addColorStop(0, `rgba(230, 245, 255, ${0.25 + Math.sin(time * 0.3) * 0.05})`);
+                gradient.addColorStop(1, `rgba(210, 230, 250, ${0.2 + Math.cos(time * 0.4) * 0.04})`);
+                break;
+            default:
+                gradient.addColorStop(0, 'rgba(67, 97, 238, 0.15)');
+                gradient.addColorStop(1, 'rgba(58, 12, 163, 0.1)');
+        }
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // ----- 2. GLOBAL BLUR FOR CLOUDS/MIST -----
+        if (weatherCondition === 'Clouds' || weatherCondition === 'Mist') {
+            ctx.filter = 'blur(12px)';
+        } else {
+            ctx.filter = 'none';
+        }
+
+        // ----- 3. DRAW PARTICLES -----
+        particles.forEach(p => {
+            // Update position
+            switch (p.type) {
+                case 'sparkle':
+                case 'haze':
+                    p.x += p.speedX * deltaTime * 0.1;
+                    p.y += p.speedY * deltaTime * 0.1;
+                    if (p.pulse) {
+                        p.radius += Math.sin(Date.now() * p.pulseSpeed) * 0.05;
+                    }
+                    break;
+                case 'cloud':
+                    p.x += p.speedX * deltaTime * 0.1;
+                    p.y += p.speedY * deltaTime * 0.1;
+                    break;
+                case 'rain':
+                    p.y += p.speedY * deltaTime * 0.08;
+                    if (p.angle) p.x += p.angle * deltaTime * 0.1;
+                    break;
+                case 'snow':
+                    p.x += p.speedX * deltaTime * 0.1 + Math.sin(Date.now() * 0.002 + p.phase) * p.sway;
+                    p.y += p.speedY * deltaTime * 0.08;
+                    break;
+            }
+
+            // Wrap around edges
+            const margin = 100;
+            if (p.x > canvas.width + margin) p.x = -margin;
+            if (p.x < -margin) p.x = canvas.width + margin;
+            if (p.y > canvas.height + margin) p.y = -margin;
+            if (p.y < -margin) p.y = canvas.height + margin;
+
+            // Draw
+            ctx.save();
+            ctx.globalAlpha = p.opacity || 0.5;
+
+            if (p.type === 'rain') {
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x + (p.angle || 0) * 5, p.y + p.length);
+                ctx.strokeStyle = p.color;
+                ctx.lineWidth = p.thickness || 1.5;
+                ctx.stroke();
+            } else if (p.type === 'snow' || p.type === 'sparkle' || p.type === 'haze') {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius || 3, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = p.type === 'snow' ? 6 : 10;
+                ctx.fill();
+            } else if (p.type === 'cloud') {
+                // Draw fluffy cloud using multiple circles
+                const baseRadius = p.radius;
+                ctx.fillStyle = p.color;
+                ctx.shadowColor = 'rgba(255,255,255,0.3)';
+                ctx.shadowBlur = 20;
+                for (let j = 0; j < (p.subParticles || 1); j++) {
+                    const offsetX = (j - 1) * baseRadius * 0.4;
+                    const offsetY = Math.sin(j) * baseRadius * 0.2;
+                    ctx.beginPath();
+                    ctx.arc(p.x + offsetX, p.y + offsetY, baseRadius * (0.7 + j * 0.2), 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+        });
+
+        // Reset filter
+        ctx.filter = 'none';
+
+        // ----- 4. LIGHTNING FLASH (thunderstorm only) -----
+        if (weatherCondition === 'Thunderstorm' && Math.random() < 0.002) {
+            ctx.fillStyle = 'rgba(255, 255, 220, 0.25)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Secondary quick flash
+            setTimeout(() => {
+                if (ctx) {
+                    ctx.fillStyle = 'rgba(255, 255, 220, 0.15)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+            }, 50);
+        }
+
+        canvasAnimationFrame = requestAnimationFrame(drawAnimatedBackground);
+    }
+
     function setupCanvas() {
         const canvas = elements.weatherCanvas;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        
+        if (!canvas) {
+            console.warn('Weather canvas not found');
+            return { drawWeatherBackground: () => {} };
+        }
+
+        ctx = canvas.getContext('2d');
+
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            initParticles(weatherCondition);
         }
-        
-        function drawWeatherBackground(condition = 'Clear') {
-            if (!canvas.width || !canvas.height) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-            
-            switch(condition) {
-                case 'Clear':
-                    gradient.addColorStop(0, 'rgba(255, 215, 0, 0.1)');
-                    gradient.addColorStop(1, 'rgba(255, 140, 0, 0.05)');
-                    drawSun(ctx, canvas);
-                    break;
-                case 'Clouds':
-                    gradient.addColorStop(0, 'rgba(176, 196, 222, 0.1)');
-                    gradient.addColorStop(1, 'rgba(112, 128, 144, 0.05)');
-                    drawClouds(ctx, canvas);
-                    break;
-                case 'Rain':
-                    gradient.addColorStop(0, 'rgba(70, 130, 180, 0.1)');
-                    gradient.addColorStop(1, 'rgba(25, 25, 112, 0.05)');
-                    drawRain(ctx, canvas);
-                    break;
-                default:
-                    gradient.addColorStop(0, 'rgba(67, 97, 238, 0.1)');
-                    gradient.addColorStop(1, 'rgba(58, 12, 163, 0.05)');
-            }
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-        
-        function drawSun(ctx, canvas) {
-            ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
-            ctx.beginPath();
-            ctx.arc(canvas.width * 0.8, canvas.height * 0.2, 40, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        
-        function drawClouds(ctx, canvas) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-            for (let i = 0; i < 5; i++) {
-                const x = (canvas.width * 0.1) + (i * canvas.width * 0.2);
-                const y = canvas.height * (0.2 + Math.sin(Date.now() * 0.001 + i) * 0.05);
-                const size = 30 + Math.sin(Date.now() * 0.001 + i) * 10;
-                
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
-                ctx.arc(x + size * 0.7, y - size * 0.3, size * 0.8, 0, Math.PI * 2);
-                ctx.arc(x - size * 0.7, y - size * 0.3, size * 0.8, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-        
-        function drawRain(ctx, canvas) {
-            ctx.strokeStyle = 'rgba(135, 206, 235, 0.3)';
-            ctx.lineWidth = 2;
-            for (let i = 0; i < 50; i++) {
-                const x = (Math.random() * canvas.width);
-                const y = (Date.now() * 0.1 + i * 20) % canvas.height;
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-                ctx.lineTo(x + 5, y + 20);
-                ctx.stroke();
-            }
-        }
-        
-        resizeCanvas();
-        drawWeatherBackground();
-        
-        function animate() {
-            drawWeatherBackground();
-            requestAnimationFrame(animate);
-        }
+
         window.addEventListener('resize', resizeCanvas);
-        animate();
-        
-        return { drawWeatherBackground };
+        resizeCanvas();
+
+        if (canvasAnimationFrame) {
+            cancelAnimationFrame(canvasAnimationFrame);
+        }
+        canvasAnimationFrame = requestAnimationFrame(drawAnimatedBackground);
+
+        return {
+            drawWeatherBackground: (condition = 'Clear') => {
+                initParticles(condition);
+            }
+        };
     }
     
     // ==================== THEME ====================
@@ -253,30 +458,30 @@ const UIManager = (() => {
     // ==================== DISPLAY WEATHER ====================
     function displayWeather(data, isMetric = true) {
         if (!data) return;
-        
+    
         // ----- Location & Time -----
         if (weatherElements.cityName) weatherElements.cityName.textContent = data.name || 'N/A';
         if (weatherElements.localTime) weatherElements.localTime.textContent = data.formatted?.time || '--:-- --';
         if (weatherElements.currentDate) weatherElements.currentDate.textContent = data.formatted?.date || '-- --- --';
-        
+    
         // ----- Temperatures -----
         const temp = isMetric ? data.main?.temp : WeatherService.convertTemp(data.main?.temp, true);
         const feelsLikeTemp = isMetric ? data.main?.feels_like : WeatherService.convertTemp(data.main?.feels_like, true);
         const tempMin = isMetric ? data.main?.temp_min : WeatherService.convertTemp(data.main?.temp_min, true);
         const tempMax = isMetric ? data.main?.temp_max : WeatherService.convertTemp(data.main?.temp_max, true);
-        
+    
         if (weatherElements.mainTemperature) {
             weatherElements.mainTemperature.textContent = temp !== undefined ? Math.round(temp) : '--';
         }
         if (weatherElements.feelsLike) {
             weatherElements.feelsLike.textContent = feelsLikeTemp !== undefined ? Math.round(feelsLikeTemp) : '--';
         }
-        
+    
         // ----- Weather Condition -----
         const weather = data.weather?.[0];
         if (weatherElements.weatherMain) weatherElements.weatherMain.textContent = weather?.main || 'N/A';
         if (weatherElements.weatherDescription) weatherElements.weatherDescription.textContent = weather?.description || 'N/A';
-        
+    
         // ----- Weather Icon (full URL) -----
         if (weather?.icon && weatherElements.weatherIcon) {
             const iconUrl = weather.icon.startsWith('http')
@@ -285,9 +490,9 @@ const UIManager = (() => {
             weatherElements.weatherIcon.src = iconUrl;
             weatherElements.weatherIcon.alt = weather.description || 'Weather icon';
         }
-        
+    
         // ----- STATS CARDS (with .value / .unit structure) -----
-        
+    
         // 1. Humidity
         const humidityEl = weatherElements.humidity;
         if (humidityEl) {
@@ -296,7 +501,7 @@ const UIManager = (() => {
             if (valSpan) valSpan.textContent = data.main?.humidity ?? '--';
             if (unitSpan) unitSpan.textContent = '%';
         }
-        
+    
         // 2. Wind Speed
         const windSpeed = isMetric ? data.wind?.speed : WeatherService.convertSpeed(data.wind?.speed, true);
         const windEl = weatherElements.wind;
@@ -306,7 +511,7 @@ const UIManager = (() => {
             if (valSpan) valSpan.textContent = windSpeed !== undefined ? windSpeed.toFixed(1) : '--';
             if (unitSpan) unitSpan.textContent = isMetric ? 'm/s' : 'mph';
         }
-        
+    
         // 3. Pressure
         const pressureEl = weatherElements.pressure;
         if (pressureEl) {
@@ -315,7 +520,7 @@ const UIManager = (() => {
             if (valSpan) valSpan.textContent = data.main?.pressure ?? '--';
             if (unitSpan) unitSpan.textContent = 'hPa';
         }
-        
+    
         // 4. Visibility
         const visibility = isMetric
             ? WeatherService.convertVisibility(data.visibility)
@@ -327,7 +532,7 @@ const UIManager = (() => {
             if (valSpan) valSpan.textContent = visibility !== undefined ? visibility.toFixed(1) : '--';
             if (unitSpan) unitSpan.textContent = isMetric ? 'km' : 'mi';
         }
-        
+    
         // 5. Min/Max Temperature (special structure)
         const tempRangeEl = weatherElements.tempRange;
         if (tempRangeEl) {
@@ -335,9 +540,9 @@ const UIManager = (() => {
             const maxValSpan = tempRangeEl.querySelector('.temp-range-value span:last-child .value');
             if (minValSpan) minValSpan.textContent = tempMin !== undefined ? Math.round(tempMin) : '--';
             if (maxValSpan) maxValSpan.textContent = tempMax !== undefined ? Math.round(tempMax) : '--';
-            // Units are already in HTML, no need to change
+            // Units are already in HTML ('°')
         }
-        
+    
         // 6. Wind Gust
         const windGustSpeed = isMetric ? data.wind?.gust : WeatherService.convertSpeed(data.wind?.gust, true);
         const gustEl = weatherElements.windGust;
@@ -347,28 +552,28 @@ const UIManager = (() => {
             if (valSpan) valSpan.textContent = windGustSpeed !== undefined ? windGustSpeed.toFixed(1) : '--';
             if (unitSpan) unitSpan.textContent = isMetric ? 'm/s' : 'mph';
         }
-        
+    
         // ----- Sunrise / Sunset -----
         if (weatherElements.sunriseTime) weatherElements.sunriseTime.textContent = data.formatted?.sunrise || '--:-- AM';
         if (weatherElements.sunsetTime) weatherElements.sunsetTime.textContent = data.formatted?.sunset || '--:-- PM';
-        
+    
         // ----- UV Index & Air Quality (mock) -----
         if (weatherElements.uvIndex) weatherElements.uvIndex.textContent = data.uv || '--';
         if (weatherElements.airQuality) weatherElements.airQuality.textContent = data.airQuality || '--';
-        
+    
         // ----- Weather Tips -----
         if (weatherElements.weatherAdvice && data.tips && data.tips.length > 0) {
             weatherElements.weatherAdvice.textContent = data.tips[0];
         }
-        
-        // ----- Background Canvas -----
+    
+        // ----- Background Canvas (Particle System) -----
         if (window.canvasManager) {
-            window.canvasManager.drawWeatherBackground(weather?.main);
+            window.canvasManager.drawWeatherBackground(weather?.main || 'Clear');
         }
-        
+    
         // ----- Add to search history -----
         if (data.name) addToHistory(data.name);
-        
+    
         // ----- Show weather container -----
         showWeather();
     }
@@ -376,43 +581,36 @@ const UIManager = (() => {
     // ==================== DISPLAY FORECAST ====================
     function displayForecast(forecastData) {
         if (!forecastData || !forecastData.length || !weatherElements.forecastContainer) return;
-        
+    
         weatherElements.forecastContainer.innerHTML = '';
-        
+    
         forecastData.forEach(day => {
             const card = document.createElement('div');
             card.className = 'forecast-card';
-            
+    
             let iconUrl = day.icon;
             if (iconUrl && !iconUrl.startsWith('http')) {
                 iconUrl = `https://openweathermap.org/img/wn/${iconUrl}@2x.png`;
             }
-            
+    
             card.innerHTML = `
                 <div class="forecast-date">${day.date || ''}</div>
                 <img src="${iconUrl || ''}" alt="${day.condition || 'Weather'}" class="forecast-icon">
                 <div class="forecast-temp">${Math.round(day.temp) || '--'}°</div>
                 <div class="forecast-desc">${day.condition || ''}</div>
             `;
-            
+    
             weatherElements.forecastContainer.appendChild(card);
         });
     }
     
     // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
-        // Theme toggle
         elements.themeToggle?.addEventListener('click', toggleTheme);
-        
-        // Units toggle
         elements.unitsToggle?.addEventListener('click', toggleUnits);
-        
-        // Retry button
         elements.retryBtn?.addEventListener('click', () => {
             elements.getWeatherBtn?.click();
         });
-        
-        // Current location button
         elements.currentLocationBtn?.addEventListener('click', async () => {
             try {
                 showLoading();
@@ -426,24 +624,29 @@ const UIManager = (() => {
                 showError('Unable to get your location. Please select a city manually.');
             }
         });
-        
-        // Enter key in select
         elements.citiesSelect?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 elements.getWeatherBtn?.click();
             }
         });
-        
-        // Prevent form submission
         elements.getWeatherBtn?.addEventListener('click', (e) => {
             e.preventDefault();
         });
     }
     
+    // ==================== INITIALIZATION ====================
+    function init() {
+        loadTheme();
+        loadUnits();
+        loadSearchHistory();
+        setupEventListeners();
+        setupCanvas(); // now returns canvasManager
+    }
+    
     // ==================== PUBLIC API ====================
     return {
         init,
-        setupCanvas,
+        setupCanvas,   // may be called externally, but used internally
         showLoading,
         hideLoading,
         showError,
