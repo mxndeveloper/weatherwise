@@ -392,6 +392,7 @@ const UIManager = (() => {
     // Public API
     return {
         init,
+        setupCanvas, 
         showLoading,
         hideLoading,
         showError,

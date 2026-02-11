@@ -7,8 +7,13 @@ const WeatherApp = (() => {
         // Initialize UI Manager
         UIManager.init();
         
-        // Setup canvas manager
-        window.canvasManager = UIManager.setupCanvas();
+        // Setup canvas manager - check if function exists
+        if (typeof UIManager.setupCanvas === 'function') {
+            window.canvasManager = UIManager.setupCanvas();
+        } else {
+            console.warn('UIManager.setupCanvas is not available');
+            window.canvasManager = { drawWeatherBackground: () => {} };
+        }
         
         // Get DOM elements
         const { getWeatherBtn, citiesSelect } = UIManager.elements;
@@ -31,6 +36,13 @@ const WeatherApp = (() => {
                 handleGetWeather();
             }
         }, 10 * 60 * 1000);
+        
+        // Load initial weather for a default city
+        setTimeout(() => {
+            if (citiesSelect.value) {
+                handleGetWeather();
+            }
+        }, 1000);
         
         console.log('WeatherWise App Ready!');
     }
